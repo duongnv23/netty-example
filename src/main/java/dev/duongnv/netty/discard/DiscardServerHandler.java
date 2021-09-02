@@ -15,23 +15,37 @@
  */
 package dev.duongnv.netty.discard;
 
+import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
+import io.netty.util.ReferenceCountUtil;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 /**
  * Handles a server-side channel.
  */
 public class DiscardServerHandler extends SimpleChannelInboundHandler<Object> {
+    private static final Logger log = LogManager.getLogger();
 
     @Override
-    public void channelRead0(ChannelHandlerContext ctx, Object msg) throws Exception {
+    public void channelRead0(ChannelHandlerContext ctx, Object msg) {
+        ByteBuf in = (ByteBuf) msg;
+        try {
+            while (in.isReadable()) { // (1)
+                log.info((char) in.readByte());
+            }
+        } finally {
+            ReferenceCountUtil.release(msg);
+//            in.release();
+        }
         // discard
     }
 
     @Override
     public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
         // Close the connection when an exception is raised.
-        cause.printStackTrace();
+        log.error(cause.getMessage(), cause);
         ctx.close();
     }
 }

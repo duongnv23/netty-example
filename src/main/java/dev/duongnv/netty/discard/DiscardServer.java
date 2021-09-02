@@ -28,14 +28,16 @@ import io.netty.handler.logging.LoggingHandler;
 import io.netty.handler.ssl.SslContext;
 import io.netty.handler.ssl.SslContextBuilder;
 import io.netty.handler.ssl.util.SelfSignedCertificate;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 /**
  * Discards any incoming data.
  */
 public final class DiscardServer {
-
     static final boolean SSL = System.getProperty("ssl") != null;
     static final int PORT = Integer.parseInt(System.getProperty("port", "8009"));
+    private static final Logger log = LogManager.getLogger();
 
     public static void main(String[] args) throws Exception {
         // Configure SSL.
@@ -52,18 +54,18 @@ public final class DiscardServer {
         try {
             ServerBootstrap b = new ServerBootstrap();
             b.group(bossGroup, workerGroup)
-             .channel(NioServerSocketChannel.class)
-             .handler(new LoggingHandler(LogLevel.INFO))
-             .childHandler(new ChannelInitializer<SocketChannel>() {
-                 @Override
-                 public void initChannel(SocketChannel ch) {
-                     ChannelPipeline p = ch.pipeline();
-                     if (sslCtx != null) {
-                         p.addLast(sslCtx.newHandler(ch.alloc()));
-                     }
-                     p.addLast(new DiscardServerHandler());
-                 }
-             });
+                    .channel(NioServerSocketChannel.class)
+                    .handler(new LoggingHandler(LogLevel.INFO))
+                    .childHandler(new ChannelInitializer<SocketChannel>() {
+                        @Override
+                        public void initChannel(SocketChannel ch) {
+                            ChannelPipeline p = ch.pipeline();
+                            if (sslCtx != null) {
+                                p.addLast(sslCtx.newHandler(ch.alloc()));
+                            }
+                            p.addLast(new DiscardServerHandler());
+                        }
+                    });
 
             // Bind and start to accept incoming connections.
             ChannelFuture f = b.bind(PORT).sync();
@@ -71,7 +73,9 @@ public final class DiscardServer {
             // Wait until the server socket is closed.
             // In this example, this does not happen, but you can do that to gracefully
             // shut down your server.
+            log.info("server started with port: {}", PORT);
             f.channel().closeFuture().sync();
+            log.info("server is shutdown!");
         } finally {
             workerGroup.shutdownGracefully();
             bossGroup.shutdownGracefully();
